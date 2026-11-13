@@ -73,14 +73,13 @@ if accel_detected == 2 and not accel_device_dir_path:
     sys.exit(1)
 
 
-# Layout
-layout = 'default'
-if len(sys.argv) > 1:
-    layout = sys.argv[1]
-try:
-    layout = importlib.import_module('conf.' + layout)
-except:
-    log.error("Layout *.py from dir conf is required as first argument. Re-run install script or add missing first argument (valid value is default, ..).")
+# Layout names are a fixed set. The command-line value is never concatenated
+# into the import path.
+layout_name = sys.argv[1] if len(sys.argv) > 1 else "default"
+if layout_name == "default":
+    layout = importlib.import_module("conf.default")
+else:
+    log.error("Unknown layout %r. Valid value is default.", layout_name)
     sys.exit(1)
 
 
@@ -162,14 +161,18 @@ def flip(tablet_mode):
 def read_accel_file(name):
     fp = open(os.path.join(accel_device_dir_path, name))
     fp.seek(0)
-    return float(fp.read()) #* 1 # TODO: * scale?
+    return float(fp.read())
+
+# This laptop's raw readings are hundreds of thousands per g.
+# The flat-screen test below is written in m/s^2.
+accel_scale = read_accel_file("in_accel_scale")
 
 tablet_mode = False
 
 while True:
-    x = read_accel_file("in_accel_x_raw")
-    y = read_accel_file("in_accel_y_raw")
-    z = read_accel_file("in_accel_z_raw")
+    x = read_accel_file("in_accel_x_raw") * accel_scale
+    y = read_accel_file("in_accel_y_raw") * accel_scale
+    z = read_accel_file("in_accel_z_raw") * accel_scale
 
     criterium_for_accel_be_recognized_as_tablet_mode = ((x >= -5 and x <= 5) and (y >= -5 and y <= 5) and z <= -9)
 
